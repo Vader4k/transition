@@ -71,6 +71,14 @@ const Nav = () => {
                         })
                     }}>Info</a>
                 </div>
+                 <div className="link">
+                    <a onClick={(e) => {
+                        e.preventDefault()
+                        router.push('/marquee', {
+                            onTransitionReady: slideInout,
+                        })
+                    }}>Marquee</a>
+                </div>
             </div>
         </div>
     )
