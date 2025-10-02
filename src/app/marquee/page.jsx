@@ -8,199 +8,221 @@ import { useRef } from "react"
 gsap.registerPlugin(Flip, ScrollTrigger)
 
 const MarqueePage = () => {
+  const originalMaqueeImg = useRef(null);
+  let pinnedMaqueeImageClone = null;  // clone of the marquee image
+  let isImgCloneActive = false;       // flag to track if clone is active
+  let flipAnimation = null;           // holds Flip animation instance
 
-    const originalMaqueeImg = useRef(null);
-    let pinnedMaqueeImageClone = null;
-    let isImgCloneActive = false;
-    let flipAnimation = null;
+  const light = '#edf1e8'
+  const dark = '#101010'
 
-    const light = '#edf1e8'
-    const dark = '#101010;'
+  // helper function for color interpolation
+  const interpolateColor = (col1, col2, col3) => {
+    return gsap.utils.interpolate(col1, col2, col3)
+  }
 
-    const interpolateColor = (col1, col2, col3) => {
-        return gsap.utils.interpolate(col1, col2, col3)
+  useGSAP(() => {
+    /**
+     * 1. MARQUEE ANIMATION
+     * --------------------
+     * Moves the `.marquee-images` horizontally based on scroll progress
+     * from -75% to -50% as the user scrolls through the `.marquee` section.
+     */
+    gsap.to('.marquee-images', {
+      scrollTrigger: {
+        trigger: '.marquee',
+        start: 'top bottom',
+        end: 'top top',
+        scrub: true,
+        onUpdate: (self) => {
+          const progress = self.progress;
+          const xPosition = -75 + progress * 25;
+          gsap.set(".marquee-images", { x: `${xPosition}%` })
+        }
+      }
+    })
+
+    /**
+     * 2. PINNED IMAGE CLONE
+     * ---------------------
+     * Clones the "pinned" marquee image, places it in the middle of the viewport,
+     * fixes it, and hides the original.
+     */
+    function createPinnedMaqueeClone() {
+      if (isImgCloneActive || !originalMaqueeImg.current) return;
+
+      const rect = originalMaqueeImg.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      pinnedMaqueeImageClone = originalMaqueeImg.current.cloneNode(true);
+
+      gsap.set(pinnedMaqueeImageClone, {
+        position: 'fixed',
+        left: centerX - originalMaqueeImg.current.offsetWidth / 2 + 'px',
+        top: centerY - originalMaqueeImg.current.offsetHeight / 2 + 'px',
+        width: originalMaqueeImg.current.offsetWidth + 'px',
+        height: originalMaqueeImg.current.offsetHeight + 'px',
+        transform: 'rotate(-5deg)',
+        transformOrigin: 'center center',
+        pointerEvents: 'none',
+        willChange: 'transform',
+        zIndex: 100
+      })
+
+      document.body.appendChild(pinnedMaqueeImageClone);
+      gsap.set(originalMaqueeImg.current, { opacity: 0 });
+
+      isImgCloneActive = true;
     }
 
-    useGSAP(() => {
-        //marque animation
-        gsap.to('.marquee-images', {
-            scrollTrigger: {
-                trigger: '.marquee',
-                start: 'top bottom',
-                end: 'top top',
-                scrub: true,
-                onUpdate: (self) => {
-                    const progress = self.progress;
-                    const xPosition = -75 + progress * 25;
-                    gsap.set(".marquee-images", {
-                        x: `${xPosition}%`
-                    })
-                }
-            }
-        })
+    /**
+     * 3. REMOVE PINNED CLONE
+     * -----------------------
+     * Cleans up the pinned image and restores the original.
+     */
+    function removePinnedMarqueeImgClone() {
+      if (!isImgCloneActive) return;
 
-        //pinned image animation
-        function createPinnedMaqueeClone() {
-            if (isImgCloneActive || !originalMaqueeImg.current) return;
+      if (pinnedMaqueeImageClone && document.body.contains(pinnedMaqueeImageClone)) {
+        pinnedMaqueeImageClone.remove();
+        pinnedMaqueeImageClone = null;
+      }
 
-            const rect = originalMaqueeImg.current.getBoundingClientRect();
-            console.log(rect)
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
+      if (originalMaqueeImg.current) {
+        gsap.set(originalMaqueeImg.current, { opacity: 1 });
+      }
 
-            pinnedMaqueeImageClone = originalMaqueeImg.current.cloneNode(true);
+      isImgCloneActive = false;
+    }
 
-            gsap.set(pinnedMaqueeImageClone, {
-                position: 'fixed',
-                left: centerX - originalMaqueeImg.current.offsetWidth / 2 + 'px',
-                top: centerY - originalMaqueeImg.current.offsetHeight / 2 + 'px',
-                width: originalMaqueeImg.current.offsetWidth + 'px',
-                height: originalMaqueeImg.current.offsetheight + 'px',
-                transform: 'rotate(-5deg)',
-                transformOrigin: 'center center',
-                pointerEvents: 'none',
-                willChange: 'transform',
-                zIndex: 100
-            })
-
-            //append clone to document body
-            document.body.appendChild(pinnedMaqueeImageClone);
-            //hide original
-            gsap.set(originalMaqueeImg.current, { opacity: 0 });
-
-            isImgCloneActive = true;
-        }
-
-
-        function removePinnedMarqueeImgClone() {
-            if (!isImgCloneActive) return;
-            if (pinnedMaqueeImageClone && document.body.contains(pinnedMaqueeImageClone)) {
-                pinnedMaqueeImageClone.remove();
-                pinnedMaqueeImageClone = null;
-            }
-            if (originalMaqueeImg.current) {
-                gsap.set(originalMaqueeImg.current, { opacity: 1 }); // restore original
-            }
-
-            isImgCloneActive = false;
-        }
-
-        //pin the horizontal scroll and make it x5
-        ScrollTrigger.create({
-            trigger: ".horizontal-scroll",
-            start: "top top",
-            end: () => `+=${window.innerHeight * 5}`,
-            pin: true,
-        })
-
-        // trigger clone when scroll reaches top
-        ScrollTrigger.create({
-            trigger: ".marquee",
-            start: "top top",
-            onEnter: createPinnedMaqueeClone,
-            onEnterBack: createPinnedMaqueeClone,
-            onLeaveBack: removePinnedMarqueeImgClone
-        });
-
-        //flip animation
-        ScrollTrigger.create({
-            trigger: ".horizontal-scroll",
-            start: "top 50%",
-            end: () => `+=${window.innerHeight * 5.5}`,
-            onEnter: () => {
-                if (pinnedMaqueeImageClone && isImgCloneActive && !flipAnimation) {
-                    const state = Flip.getState(pinnedMaqueeImageClone);
-
-                    gsap.set(pinnedMaqueeImageClone, {
-                        position: 'fixed',
-                        left: '0px',
-                        top: '0px',
-                        width: "100%",
-                        height: "100svh",
-                        transform: "rotate(0deg)",
-                        transformOrigin: 'center center'
-                    })
-
-                    flipAnimation = Flip.from(state, {
-                        duration: 1,
-                        ease: 'none',
-                        paused: true,
-                    })
-                }
-            },
-            onLeaveBack: () => {
-                if (flipAnimation) {
-                    flipAnimation.kill();
-                    flipAnimation = null
-                }
-                gsap.set('.container', {
-                    background: '#edf1e8'
-                });
-                gsap.set(".horizontal-scroll-wrapper", {
-                    x: "0%"
-                })
-            }
-        })
-
-        ScrollTrigger.create({
-            trigger: ".horizontal-scroll",
-            start: "top 50%",
-            end: () => `+=${window.innerHeight * 5.5}`,
-            onUpdate: (self) => {
-                const progress = self.progress;
-
-                if (progress <= 0.05) {
-                    const bgColorProgress = Math.min(progress / 0.05, 1);
-                    const newBgColor = interpolateColor('#edf1e8', '#101010', bgColorProgress);
-
-                    gsap.set('.container', {
-                        backgroundColor: newBgColor
-                    })
-                } else if (progress > 0.05) {
-                    gsap.set('.container', {
-                        backgroundColor: '#101010'
-                    })
-                }
-
-                if (progress <= 0.2) {
-                    const scaleProgress = progress / 0.2;
-                    if (flipAnimation) {
-                        flipAnimation.progress(scaleProgress);
-                    }
-                }
-
-                if (progress > 0.2 && progress <= 0.95) {
-                    if (flipAnimation) {
-                        flipAnimation.progress(1);
-                    }
-
-                    const horizontalProgress = (progress - 0.2) / 0.75
-
-                    const wrappedTranslateX = -66.67 * horizontalProgress;
-                    gsap.set(".horizontal-scroll-wrapper", {
-                        x: `${wrappedTranslateX}%`
-                    })
-
-                    const slideMovement = (66.67 / 100) * 3 * horizontalProgress;
-                    const imageTranslateX = -slideMovement * 100;
-                    gsap.set(pinnedMaqueeImageClone, {
-                        x: `${imageTranslateX}%`
-                    })
-                } else if (progress > 0.95) {
-                    if (flipAnimation) {
-                        flipAnimation.progress(1)
-                    }
-                    gsap.set(pinnedMaqueeImageClone, {
-                        x: '-200%'
-                    });
-                    gsap.set(".horizontal-scroll-wrapper", {
-                        x: '-66.67%'
-                    })
-                }
-            }
-        })
-
+    /**
+     * 4. HORIZONTAL SCROLL PIN
+     * -------------------------
+     * Pins the `.horizontal-scroll` section for 5 viewport heights.
+     * Creates a fake horizontal scroll effect by stretching vertical scroll.
+     */
+    ScrollTrigger.create({
+      trigger: ".horizontal-scroll",
+      start: "top top",
+      end: () => `+=${window.innerHeight * 5}`,
+      pin: true,
     })
+
+    /**
+     * 5. CLONE TRIGGER
+     * -----------------
+     * When `.marquee` hits the top of the viewport, create a pinned clone.
+     * Also re-create it when scrolling back up (`onEnterBack`).
+     * Remove it when leaving backwards (`onLeaveBack`).
+     */
+    ScrollTrigger.create({
+      trigger: ".marquee",
+      start: "top top",
+      onEnter: createPinnedMaqueeClone,
+      onEnterBack: createPinnedMaqueeClone,
+      onLeaveBack: removePinnedMarqueeImgClone
+    });
+
+    /**
+     * 6. FLIP ANIMATION SETUP
+     * ------------------------
+     * Uses GSAP's Flip plugin to smoothly transform the cloned image
+     * from its pinned position into a fullscreen hero state.
+     */
+    ScrollTrigger.create({
+      trigger: ".horizontal-scroll",
+      start: "top 50%",
+      end: () => `+=${window.innerHeight * 5.5}`,
+      onEnter: () => {
+        if (pinnedMaqueeImageClone && isImgCloneActive && !flipAnimation) {
+          // Capture original state of the element
+          const state = Flip.getState(pinnedMaqueeImageClone);
+
+          // Apply new "final" state
+          gsap.set(pinnedMaqueeImageClone, {
+            position: 'fixed',
+            left: '0px',
+            top: '0px',
+            width: "100%",
+            height: "100svh",
+            transform: "rotate(0deg)",
+            transformOrigin: 'center center'
+          })
+
+          // Create Flip animation from old → new
+          flipAnimation = Flip.from(state, {
+            duration: 1,
+            ease: 'none',
+            paused: true, // control progress manually
+          })
+        }
+      },
+      onLeaveBack: () => {
+        // Reset if scrolling backwards
+        if (flipAnimation) {
+          flipAnimation.kill();
+          flipAnimation = null
+        }
+        gsap.set('.container', { background: light });
+        gsap.set(".horizontal-scroll-wrapper", { x: "0%" })
+      }
+    })
+
+    /**
+     * 7. SCROLL-DRIVEN PROGRESS
+     * --------------------------
+     * - Interpolates background color from light → dark.
+     * - Controls Flip animation progress (scales pinned image fullscreen).
+     * - Animates horizontal content scroll inside `.horizontal-scroll-wrapper`.
+     */
+    ScrollTrigger.create({
+      trigger: ".horizontal-scroll",
+      start: "top 50%",
+      end: () => `+=${window.innerHeight * 5.5}`,
+      onUpdate: (self) => {
+        const progress = self.progress;
+
+        // Background color fade in first 5% of scroll
+        if (progress <= 0.05) {
+          const bgColorProgress = Math.min(progress / 0.05, 1);
+          const newBgColor = interpolateColor(light, dark, bgColorProgress);
+          gsap.set('.container', { backgroundColor: newBgColor })
+        } else if (progress > 0.05) {
+          gsap.set('.container', { backgroundColor: dark })
+        }
+
+        // Flip animation (scale pinned image fullscreen) in first 20% of scroll
+        if (progress <= 0.2) {
+          const scaleProgress = progress / 0.2;
+          if (flipAnimation) flipAnimation.progress(scaleProgress);
+        }
+
+        // Horizontal scroll movement (between 20% and 95% of scroll)
+        if (progress > 0.2 && progress <= 0.95) {
+          if (flipAnimation) flipAnimation.progress(1);
+
+          const horizontalProgress = (progress - 0.2) / 0.75;
+          const wrappedTranslateX = -66.67 * horizontalProgress;
+
+          gsap.set(".horizontal-scroll-wrapper", { x: `${wrappedTranslateX}%` })
+
+          // Move pinned image along with horizontal scroll
+          const slideMovement = (66.67 / 100) * 3 * horizontalProgress;
+          const imageTranslateX = -slideMovement * 100;
+          gsap.set(pinnedMaqueeImageClone, { x: `${imageTranslateX}%` })
+        }
+
+        // At the end, slide image fully out of frame
+        else if (progress > 0.95) {
+          if (flipAnimation) flipAnimation.progress(1)
+          gsap.set(pinnedMaqueeImageClone, { x: '-200%' });
+          gsap.set(".horizontal-scroll-wrapper", { x: '-66.67%' })
+        }
+      }
+    })
+  })
+
 
     return (
         <div className='container'>
